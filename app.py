@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response, send_file, make_response, send_from_directory, session, redirect, url_for
 import os
 import time
 import sqlite3
@@ -79,7 +79,7 @@ def init_db():
 
 init_db()
 
-from flask import session, redirect, url_for
+
 
 @app.route('/')
 def index():
@@ -153,7 +153,10 @@ def login():
         if user:
             session['logged_in'] = True
             session['username'] = username
-            session['full_name'] = user['full_name'] if (user and 'full_name' in user.keys()) else username
+            try:
+                session['full_name'] = user['full_name']
+            except (KeyError, IndexError):
+                session['full_name'] = username
             session['is_new_user'] = False
             session['show_welcome'] = True
             return redirect(url_for('index'))
@@ -224,7 +227,7 @@ def get_history_record(record_id):
         return jsonify({'success': True, 'results': json.loads(row['results_json'])})
     return jsonify({'success': False, 'message': 'Record not found or has no detailed data.'})
 
-from flask import send_file
+
 
 @app.route('/api/datasets')
 def list_datasets():
@@ -234,9 +237,9 @@ def list_datasets():
     files = [f for f in os.listdir(base_path) if f.endswith('.csv')]
     return jsonify(files)
 
-from flask import make_response
 
-from flask import send_from_directory
+
+
 
 @app.route('/api/download_dataset/<filename>')
 def download_dataset(filename):
@@ -266,9 +269,17 @@ def run_library_dataset(filename):
 @app.route('/download_sample')
 def download_sample():
     try:
+        if not os.path.exists('wind_turbine_data.csv'):
+            from generate_data import generate_wind_turbine_data
+            generate_wind_turbine_data()
+            
         with open('wind_turbine_data.csv', 'r') as f:
             content = f.read()
-        return Response(content, mimetype='text/plain')
+        return Response(
+            content,
+            mimetype='text/csv',
+            headers={'Content-disposition': 'attachment; filename=wind_turbine_data.csv'}
+        )
     except Exception as e:
         return str(e), 500
 

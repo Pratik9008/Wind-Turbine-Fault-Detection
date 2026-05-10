@@ -322,7 +322,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (openFolderBtn) openFolderBtn.addEventListener('click', () => fetch('/api/open_folder'));
-    if (copyPathBtn) copyPathBtn.addEventListener('click', () => { navigator.clipboard.writeText("c:\\Users\\ps671\\Downloads\\Ankit Project\\datasets"); copyPathBtn.innerHTML = 'Path Copied!'; setTimeout(() => copyPathBtn.innerHTML = 'Copy Path', 2000); });
+    if (copyPathBtn) copyPathBtn.addEventListener('click', () => { 
+        const path = "datasets"; 
+        navigator.clipboard.writeText(path); 
+        copyPathBtn.innerHTML = '<i class="fas fa-check"></i> Folder Copied!'; 
+        setTimeout(() => copyPathBtn.innerHTML = '<i class="fas fa-copy"></i> Copy Path', 2000); 
+    });
 
     // --- Helper Functions ---
     async function loadDatasets() {

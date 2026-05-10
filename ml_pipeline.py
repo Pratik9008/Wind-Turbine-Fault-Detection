@@ -111,7 +111,7 @@ def run_ml_pipeline(filepath):
         import random
         return {
             "dataset_stats": { "original_size": 0, "minority_class_size": 0, "size_after_smote": 0 },
-            "model_performance": { "perceptron": 0.0, "ridge_regression": 0.0, "xgboost": 0.0, "ridge_regression": 0.0 },
+            "model_performance": { "perceptron": 0.0, "ridge_regression": 0.0, "xgboost": 0.0 },
             "dbscan_anomalies": 0,
             "tree_features": [{"name": "Error", "importance": 0}],
             "time_series_data": [],
