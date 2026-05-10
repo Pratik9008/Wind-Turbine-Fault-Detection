@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroGuard AI | Prediction History</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .history-table th, .history-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .history-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+        .history-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .badge-success { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .badge-warning { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="background-elements">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fas fa-fan"></i> AeroGuard <span>AI</span>
+        </div>
+        <div class="nav-controls">
+            <ul class="nav-links">
+                <li><a href="/" class="nav-pill"><i class="fas fa-th-large"></i> Dashboard</a></li>
+                <li><a href="/history" class="nav-pill active"><i class="fas fa-history"></i> Analysis History</a></li>
+                <li><a href="#" class="nav-pill" onclick="window.location.href='/?openLibrary=true'"><i class="fas fa-database"></i> Dataset Library</a></li>
+            </ul>
+            <div class="nav-utilities">
+                <button class="icon-pill"><i class="fas fa-bell"></i></button>
+                <button class="icon-pill"><i class="fas fa-cog"></i></button>
+                <div class="profile-pill">
+                    <img src="https://ui-avatars.com/api/?name=Admin&background=3b82f6&color=fff" alt="Admin">
+                    <span>Admin</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard">
+        <header class="dashboard-header">
+            <div>
+                <h1 class="gradient-title">Prediction History</h1>
+                <p>View past Wind Turbine ML pipeline executions from the Database.</p>
+            </div>
+            <div class="upload-section">
+                <a href="/" class="btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </header>
+
+        <div class="card wide-card">
+            <div class="card-header">
+                <h2>Database Records (SQLite)</h2>
+            </div>
+            <div style="overflow-x: auto;">
+                {% if records %}
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Dataset File</th>
+                            <th>XGBoost Accuracy</th>
+                            <th>Anomalies Detected</th>
+                            <th>Date & Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in records %}
+                        <tr>
+                            <td>#{{ row[0] }}</td>
+                            <td><i class="fas fa-file-csv" style="color: var(--primary); margin-right: 8px;"></i> {{ row[1] }}</td>
+                            <td>{{ "%.2f"|format(row[2] * 100) }}%</td>
+                            <td>
+                                {% if row[3] > 0 %}
+                                <span class="badge badge-warning"><i class="fas fa-exclamation-triangle"></i> {{ row[3] }} Found</span>
+                                {% else %}
+                                <span class="badge badge-success"><i class="fas fa-check"></i> Normal</span>
+                                {% endif %}
+                            </td>
+                            <td style="color: var(--text-muted);">{{ row[4] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-database" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                    <h3>No Records Found</h3>
+                    <p>Go to the Dashboard and run the pipeline to save data here.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</body>
+</html>

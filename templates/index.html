@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurbineGuard AI | Wind Turbine Fault Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Force hide body scroll when any modal is open */
+        body.modal-open {
+            overflow: hidden !important;
+            padding-right: 15px; /* Prevent layout shift */
+        }
+    </style>
+</head>
+<body>
+    <div class="background-elements">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <nav class="navbar">
+        <div class="logo">
+            <i class="fas fa-fan"></i> TurbineGuard <span>AI</span>
+        </div>
+        <div class="nav-controls">
+            <ul class="nav-links">
+                <li><a href="/" class="nav-pill active"><i class="fas fa-th-large"></i> Dashboard</a></li>
+                <li><a href="#" id="navHistoryBtn" class="nav-pill"><i class="fas fa-history"></i> Analysis History</a></li>
+                <li><a href="#" id="navLibraryBtn" class="nav-pill"><i class="fas fa-database"></i> Dataset Library</a></li>
+            </ul>
+            <div class="nav-utilities">
+                <div class="notification-wrapper">
+                    <button id="notiBell" class="icon-pill">
+                        <i class="fas fa-bell"></i>
+                        <span id="notiBadge" class="noti-badge hidden"></span>
+                    </button>
+                    <div id="notiDropdown" class="noti-dropdown hidden">
+                        <div class="noti-header">
+                            <span>Notifications</span>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button onclick="showNotifications()" class="clear-btn" style="color: var(--primary);">See All</button>
+                                <span style="opacity: 0.3;">|</span>
+                                <button onclick="clearNotifications()" class="clear-btn">Clear</button>
+                            </div>
+                        </div>
+                        <div id="notiList" class="noti-list">
+                            <div class="noti-empty">No new activities</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-wrapper">
+                    <button id="profileBtn" class="profile-pill">
+                        <img src="https://ui-avatars.com/api/?name={{ full_name }}&background=3b82f6&color=fff" alt="{{ full_name }}">
+                        <span>{{ full_name }}</span>
+                        <i class="fas fa-chevron-down" style="font-size: 0.7rem; margin-left: 5px; opacity: 0.5;"></i>
+                    </button>
+                    <div id="profileDropdown" class="profile-dropdown hidden">
+                        <div class="dropdown-header">
+                            <strong>{{ full_name }}</strong>
+                            <span>{{ username }}</span>
+                        </div>
+                        <ul class="dropdown-menu">
+                            <li><a href="#" onclick="showNotifications()"><i class="fas fa-bell"></i> Activity Center</a></li>
+                            <li><a href="#" onclick="showHistory()"><i class="fas fa-history"></i> My History</a></li>
+                            <li class="divider"></li>
+                            <li><a href="/logout" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div id="welcomeData" 
+                     data-show="{{ 'true' if show_welcome else 'false' }}" 
+                     data-new="{{ 'true' if is_new_user else 'false' }}" 
+                     data-user="{{ username }}" 
+                     style="display:none;"></div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="dashboard">
+        <!-- Main Dashboard View -->
+        <div id="mainDashboardView">
+            <header class="dashboard-header">
+                <div>
+                    <h1 class="gradient-title">Wind Turbine Fault Detection</h1>
+                    <p>Advanced predictive maintenance using SMOTE, XGBoost, and DBSCAN</p>
+                </div>
+                <div class="upload-section">
+                    <input type="file" id="csvFileInput" accept=".csv" hidden>
+                    <label for="csvFileInput" class="btn-primary">
+                        <i class="fas fa-cloud-upload-alt"></i> Upload Sensor Data
+                    </label>
+                    <button id="analyzeBtn" class="btn-secondary" disabled>
+                        <i class="fas fa-bolt"></i> Run Pipeline
+                    </button>
+                </div>
+            </header>
+
+            <div id="loadingOverlay" class="loading-overlay hidden">
+                <div class="spinner"></div>
+                <p>Running ML Pipeline...</p>
+                <span class="sub-text">Applying SMOTE -> Feature Extraction -> XGBoost -> DBSCAN</span>
+            </div>
+
+            <div id="resultsContainer" class="results-grid hidden">
+                <!-- KPIs -->
+                <div class="card kpi-card" onclick="showExplanation('smote')" style="cursor: pointer;">
+                    <div class="kpi-icon smote-icon"><i class="fas fa-balance-scale"></i></div>
+                    <div class="kpi-info">
+                        <h3>Data Balancing (SMOTE)</h3>
+                        <p class="stat" id="smoteStat">0 <span>samples added</span></p>
+                        <span class="trend positive"><i class="fas fa-arrow-up"></i> Fixed class imbalance to improve AI accuracy.</span>
+                    </div>
+                </div>
+                <div class="card kpi-card" onclick="showExplanation('xgboost')" style="cursor: pointer;">
+                    <div class="kpi-icon xgboost-icon"><i class="fas fa-trophy"></i></div>
+                    <div class="kpi-info">
+                        <h3>XGBoost Predictor</h3>
+                        <p class="stat" id="xgbStat">0.00%</p>
+                        <span class="trend positive">Winner Model! Correctly predicts fault types.</span>
+                    </div>
+                </div>
+                <div class="card kpi-card" onclick="showExplanation('dbscan')" style="cursor: pointer;">
+                    <div class="kpi-icon dbscan-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="kpi-info">
+                        <h3>Abnormalities (DBSCAN)</h3>
+                        <p class="stat anomaly-text" id="dbscanStat">0</p>
+                        <span class="trend negative"><i class="fas fa-exclamation-circle"></i> Unsupervised clustering found these weird patterns.</span>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="card chart-card wide-card">
+                    <div class="card-header">
+                        <h2>Real-time Vibration Monitoring (DBSCAN Clusters)</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="vibrationChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card chart-card">
+                    <div class="card-header">
+                        <h2>Tree-Based Feature Importance</h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="featureChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card comparison-card">
+                    <div class="card-header">
+                        <h2>Model Comparison</h2>
+                    </div>
+                    <div class="comparison-bars">
+                        <div class="bar-group">
+                            <label>XGBoost Classifier</label>
+                            <div class="progress-bar"><div class="fill xgb-fill" id="barXgb" style="width: 0%;"></div></div>
+                            <span class="val" id="valXgb">0%</span>
+                        </div>
+                        <div class="bar-group">
+                            <label>Ridge Regression</label>
+                            <div class="progress-bar"><div class="fill ridge-fill" id="barRidge" style="width: 0%;"></div></div>
+                            <span class="val" id="valRidge">0%</span>
+                        </div>
+                        <div class="bar-group">
+                            <label>Perceptron</label>
+                            <div class="progress-bar"><div class="fill perceptron-fill" id="barPerceptron" style="width: 0%;"></div></div>
+                            <span class="val" id="valPerceptron">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Placeholder before upload -->
+            <div id="placeholderState" class="placeholder-state">
+                <h2>Welcome to TurbineGuard AI</h2>
+                <p>We use advanced Machine Learning to detect faults in Wind Turbines before they break down. Follow these 3 easy steps:</p>
+                
+                <div class="steps-container" style="display: flex; gap: 2rem; justify-content: center; margin-top: 2rem; text-align: left;">
+                    <div class="step-card" style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 12px; flex: 1;">
+                        <h3 style="color: var(--primary); margin-bottom: 0.5rem;"><i class="fas fa-magic"></i> 1-Click Demo</h3>
+                        <p style="font-size: 0.9rem; margin-bottom: 1rem;">Don't have your own data? Run the pipeline instantly using our pre-loaded real AI dataset.</p>
+                        <button id="demoBtn" class="btn-primary" style="font-size: 0.8rem; padding: 0.6rem 1.2rem; width: 100%; justify-content: center;"><i class="fas fa-bolt"></i> Run Instant Demo</button>
+                    </div>
+                    <div class="step-card" style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 12px; flex: 1;">
+                        <h3 style="color: var(--success); margin-bottom: 0.5rem;"><i class="fas fa-upload"></i> Or Upload Custom</h3>
+                        <p style="font-size: 0.9rem; margin-bottom: 1rem;">Have your own CSV? Click the <b>"Upload Sensor Data"</b> button at the top right.</p>
+                        <a href="#" id="openLibraryBtn" style="color: var(--text-muted); font-size: 0.8rem; text-decoration: underline;"><i class="fas fa-layer-group"></i> Open Dataset Library (50+ Files)</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Audit View (Seamless Transition) -->
+        <div id="detailedAuditView" class="hidden" style="animation: fadeIn 0.4s ease;">
+            <header class="dashboard-header">
+                <div>
+                    <h1 id="auditTitle" class="gradient-title">Technical Audit Report</h1>
+                    <p>In-depth AI analysis and methodology for the current pipeline execution.</p>
+                </div>
+                <div class="upload-section">
+                    <button onclick="hideExplanation()" class="btn-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+                </div>
+            </header>
+
+            <div class="card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 20px; padding: 2rem;">
+                <div id="auditBody">
+                    <!-- Content injected via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Dataset Library View (Seamless SPA Transition) -->
+        <div id="datasetLibraryView" class="hidden" style="animation: fadeIn 0.4s ease;">
+            <header class="dashboard-header">
+                <div>
+                    <h1 class="gradient-title">Professional Dataset Library</h1>
+                    <p>Access and run massive sensor datasets for predictive maintenance testing.</p>
+                </div>
+                <div class="upload-section">
+                    <button id="generateMoreBtn" class="btn-primary" style="background: var(--primary);"><i class="fas fa-plus"></i> Generate More Data</button>
+                    <button id="openFolderBtn" class="btn-primary" style="background: var(--secondary);"><i class="fas fa-folder-open"></i> Open Folder (On PC)</button>
+                    <button id="copyPathBtn" class="btn-secondary"><i class="fas fa-copy"></i> Copy Path</button>
+                    <button onclick="hideLibrary()" class="btn-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+                </div>
+            </header>
+
+            <div class="card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); padding: 2rem; border-radius: 20px;">
+                <div id="datasetList" class="dataset-grid">
+                    <!-- Datasets will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+
+
+
+        <!-- Prediction History View (Seamless SPA Transition) -->
+        <div id="predictionHistoryView" class="hidden" style="animation: fadeIn 0.4s ease;">
+            <header class="dashboard-header">
+                <div>
+                    <h1 class="gradient-title">Analysis History</h1>
+                    <p>Track all past Wind Turbine sensor evaluations and AI results.</p>
+                </div>
+                <div class="upload-section">
+                    <button onclick="clearAllHistory()" class="btn-secondary" style="margin-right: 1rem; border-color: rgba(244, 63, 94, 0.2); color: var(--danger);"><i class="fas fa-trash-sweep"></i> Clear All History</button>
+                    <button onclick="hideHistory()" class="btn-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+                </div>
+            </header>
+
+            <div class="card" style="background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); padding: 0; border-radius: 20px; overflow: hidden;">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Target File</th>
+                            <th>XGBoost Score</th>
+                            <th>Anomalies</th>
+                            <th>Timestamp</th>
+                            <th style="text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyList">
+                        <!-- History will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Notification Center View (Seamless SPA Transition) -->
+        <div id="notificationCenterView" class="hidden" style="animation: fadeIn 0.4s ease;">
+            <header class="dashboard-header">
+                <div>
+                    <h1 class="gradient-title">System Activity Center</h1>
+                    <p>Comprehensive logs of all ML pipeline executions and dataset generations.</p>
+                </div>
+                <div class="upload-section">
+                    <button onclick="clearNotifications()" class="btn-secondary" style="margin-right: 1rem;"><i class="fas fa-trash"></i> Clear Logs</button>
+                    <button onclick="hideNotifications()" class="btn-primary"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+                </div>
+            </header>
+
+            <div id="fullNotiList" class="dataset-grid" style="grid-template-columns: 1fr;">
+                <!-- Full notifications will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Notification Toast System -->
+        <div id="toastContainer" class="toast-container"></div>
+
+    </main>
+
+        <!-- Custom Premium Confirmation Modal -->
+        <div id="confirmModal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-icon warning"><i class="fas fa-exclamation-triangle"></i></div>
+                <h3 id="confirmTitle">Are you sure?</h3>
+                <p id="confirmMessage">This action cannot be undone.</p>
+                <div class="modal-actions">
+                    <button id="confirmCancel" class="btn-secondary">Cancel</button>
+                    <button id="confirmProceed" class="btn-primary" style="background: var(--danger);">Yes, Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
