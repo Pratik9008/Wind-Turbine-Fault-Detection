@@ -80,7 +80,7 @@ Unsupervised clustering finds data patterns that don't fit normal behavior, catc
 ---
 
 ## 👤 Author
-**Pratik Kumar Rajput**
+**Ankit Kesarwani**
 - [GitHub](https://github.com/Pratik9008)
 - [LinkedIn](https://www.linkedin.com/in/pratik-kumar-rajput/)
 
