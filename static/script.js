@@ -512,3 +512,74 @@ document.addEventListener('DOMContentLoaded', () => {
         featChartInstance = new Chart(ctx, { type: 'bar', data: { labels: features.map(f => f.name), datasets: [{ label: 'Feature Importance (%)', data: features.map(f => f.importance * 100), backgroundColor: 'rgba(59, 130, 246, 0.8)', borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }, y: { grid: { display: false }, ticks: { color: '#94a3b8' } } } } });
     }
 });
+
+// --- AI Assistant (TurbineBot) Logic ---
+const chatbotToggle = document.getElementById("chatbotToggle");
+const chatWindow = document.getElementById("chatWindow");
+const closeChat = document.getElementById("closeChat");
+const chatInput = document.getElementById("chatInput");
+const sendChat = document.getElementById("sendChat");
+const chatBody = document.getElementById("chatBody");
+
+if (chatbotToggle) {
+    chatbotToggle.addEventListener("click", () => {
+        chatWindow.classList.toggle("hidden");
+        if (!chatWindow.classList.contains("hidden")) {
+            chatInput.focus();
+        }
+    });
+}
+
+if (closeChat) {
+    closeChat.addEventListener("click", () => {
+        chatWindow.classList.add("hidden");
+    });
+}
+
+const appendMessage = (message, type) => {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `msg ${type}-msg`;
+    msgDiv.innerHTML = message.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    chatBody.appendChild(msgDiv);
+    chatBody.scrollTop = chatBody.scrollHeight;
+};
+
+const handleChat = async () => {
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    appendMessage(message, "user");
+    chatInput.value = "";
+
+    // Show typing indicator
+    const typing = document.createElement("div");
+    typing.className = "typing-indicator";
+    typing.innerText = "TurbineBot is thinking...";
+    chatBody.appendChild(typing);
+    chatBody.scrollTop = chatBody.scrollHeight;
+
+    try {
+        const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message })
+        });
+        const data = await response.json();
+        typing.remove();
+        appendMessage(data.response, "bot");
+    } catch (error) {
+        typing.remove();
+        appendMessage("Bhai, server se connection toot gaya. Ek baar refresh karke dekho!", "bot");
+    }
+};
+
+if (sendChat) {
+    sendChat.addEventListener("click", handleChat);
+}
+
+if (chatInput) {
+    chatInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") handleChat();
+    });
+}
+

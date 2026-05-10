@@ -308,6 +308,38 @@
             </div>
         </div>
 
+        <!-- AI Assistant (TurbineBot) -->
+        <div class="chatbot-container">
+            <button id="chatbotToggle" class="chatbot-btn">
+                <i class="fas fa-robot"></i>
+                <span class="btn-glow"></span>
+            </button>
+            
+            <div id="chatWindow" class="chat-window hidden">
+                <div class="chat-header">
+                    <div class="bot-info">
+                        <div class="bot-avatar"><i class="fas fa-robot"></i></div>
+                        <div>
+                            <h4>TurbineBot <span>AI</span></h4>
+                            <p><span class="online-status"></span> Active Now</p>
+                        </div>
+                    </div>
+                    <button id="closeChat" class="close-chat"><i class="fas fa-times"></i></button>
+                </div>
+                
+                <div id="chatBody" class="chat-body">
+                    <div class="msg bot-msg">
+                        Hello! I am **TurbineBot**. Ask me anything about SMOTE, XGBoost, or how to use this platform!
+                    </div>
+                </div>
+                
+                <div class="chat-footer">
+                    <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+                    <button id="sendChat"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+
         <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

@@ -333,6 +333,34 @@ def upload_file():
         latest_results = results
         return jsonify({'message': 'File successfully processed', 'results': results})
 
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    user_message = request.json.get('message', '').lower()
+    
+    # Simple smart logic for TurbineBot
+    knowledge_base = {
+        'smote': 'SMOTE (Synthetic Minority Over-sampling Technique) balances our data. Since turbine failures are rare, SMOTE creates synthetic "fault" samples so the AI can learn better.',
+        'xgboost': 'XGBoost is our primary classifier. It uses Decision Trees and Gradient Boosting to achieve over 99% accuracy in predicting faults.',
+        'dbscan': 'DBSCAN is an unsupervised clustering algorithm. It helps us find "anomalies" or outliers in sensor data that don\'t follow normal patterns.',
+        'hello': 'Hello! I am TurbineBot. How can I help you with wind turbine monitoring today?',
+        'hi': 'Hi there! Ready to analyze some turbine data?',
+        'help': 'You can upload a CSV file or run our "Instant Demo" to see the AI in action. I can also explain technical terms like SMOTE or XGBoost!',
+        'fault': 'Faults in wind turbines can be detected via high vibration, high gearbox temperature, or drops in power output. Our AI monitors all these simultaneously.',
+        'accuracy': 'Our XGBoost model typically achieves 98-100% accuracy after SMOTE balancing.',
+        'dataset': 'You can find over 50 test datasets in our "Dataset Library" tab.',
+        'author': 'This platform was developed by Pratik Kumar Rajput for advanced predictive maintenance.',
+        'pratik': 'Pratik Kumar Rajput is the developer behind this awesome AI platform!'
+    }
+    
+    response = "I'm not sure about that, bhai. Try asking about SMOTE, XGBoost, or how to use the dashboard!"
+    
+    for key in knowledge_base:
+        if key in user_message:
+            response = knowledge_base[key]
+            break
+            
+    return jsonify({'response': response})
+
 if __name__ == '__main__':
     init_db()
     app.run(debug=True, port=5000, threaded=True)
