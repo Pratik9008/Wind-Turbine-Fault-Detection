@@ -293,6 +293,30 @@
         <!-- Notification Toast System -->
         <div id="toastContainer" class="toast-container"></div>
 
+        <!-- AI Assistant (TurbineBot) Widget -->
+        <div class="ai-widget-container">
+            <div id="aiChatWindow" class="ai-chat-window hidden">
+                <div class="ai-chat-header">
+                    <div class="ai-status-dot"></div>
+                    <span>TurbineBot AI</span>
+                    <button id="closeChatBtn" class="ai-close-btn"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="aiChatBody" class="ai-chat-body">
+                    <div class="ai-message bot">
+                        <p>Hello! I'm TurbineBot. How can I help you with wind turbine diagnostics today?</p>
+                    </div>
+                </div>
+                <div class="ai-chat-footer">
+                    <input type="text" id="aiChatInput" placeholder="Ask about SMOTE, XGBoost...">
+                    <button id="sendChatBtn"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+            <button id="aiFabBtn" class="ai-fab">
+                <i class="fas fa-robot"></i>
+                <span class="ai-fab-label">AI Assistant</span>
+            </button>
+        </div>
+
     </main>
 
         <!-- Custom Premium Confirmation Modal -->
@@ -304,38 +328,6 @@
                 <div class="modal-actions">
                     <button id="confirmCancel" class="btn-secondary">Cancel</button>
                     <button id="confirmProceed" class="btn-primary" style="background: var(--danger);">Yes, Delete</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- AI Assistant (TurbineBot) -->
-        <div class="chatbot-container">
-            <button id="chatbotToggle" class="chatbot-btn">
-                <i class="fas fa-robot"></i>
-                <span class="btn-glow"></span>
-            </button>
-            
-            <div id="chatWindow" class="chat-window hidden">
-                <div class="chat-header">
-                    <div class="bot-info">
-                        <div class="bot-avatar"><i class="fas fa-robot"></i></div>
-                        <div>
-                            <h4>TurbineBot <span>AI</span></h4>
-                            <p><span class="online-status"></span> Active Now</p>
-                        </div>
-                    </div>
-                    <button id="closeChat" class="close-chat"><i class="fas fa-times"></i></button>
-                </div>
-                
-                <div id="chatBody" class="chat-body">
-                    <div class="msg bot-msg">
-                        Hello! I am **TurbineBot**. Ask me anything about SMOTE, XGBoost, or how to use this platform!
-                    </div>
-                </div>
-                
-                <div class="chat-footer">
-                    <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
-                    <button id="sendChat"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
         </div>

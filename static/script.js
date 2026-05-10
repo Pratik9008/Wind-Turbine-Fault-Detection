@@ -507,79 +507,274 @@ document.addEventListener('DOMContentLoaded', () => {
     let featChartInstance = null;
     function renderFeatureChart(features) {
         const ctx = document.getElementById('featureChart').getContext('2d');
+            generateMoreBtn.disabled = true;
+            try {
+                const response = await fetch('/api/generate_more', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) { await loadDatasets(); addNotification(`New Dataset Generated: ${data.message}`, "success", "library"); }
+            } catch (error) { } finally { generateMoreBtn.disabled = false; }
+        });
+    }
+
+    if (openFolderBtn) openFolderBtn.addEventListener('click', () => fetch('/api/open_folder'));
+    if (copyPathBtn) copyPathBtn.addEventListener('click', () => { 
+        const path = "datasets"; 
+        navigator.clipboard.writeText(path); 
+        copyPathBtn.innerHTML = '<i class="fas fa-check"></i> Folder Copied!'; 
+        setTimeout(() => copyPathBtn.innerHTML = '<i class="fas fa-copy"></i> Copy Path', 2000); 
+    });
+
+    // --- Helper Functions ---
+    async function loadDatasets() {
+        try {
+            const response = await fetch('/api/datasets');
+            const files = await response.json();
+            datasetList.innerHTML = files.map(file => `
+                <div class="dataset-item">
+                    <div style="margin-bottom: 0.8rem; font-weight: 600; font-size: 0.85rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        <i class="fas fa-file-csv" style="color: var(--primary); margin-right: 0.5rem;"></i>${file}
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: auto;">
+                        <button class="btn-download run-lib-btn" data-filename="${file}" style="background: var(--primary); flex: 2; font-size: 0.75rem; padding: 0.5rem;"><i class="fas fa-play"></i> Run AI</button>
+                        <button class="btn-download get-file-btn" data-filename="${file}" style="background: rgba(255,255,255,0.05); flex: 1; font-size: 0.75rem; padding: 0.5rem;"><i class="fas fa-download"></i></button>
+                    </div>
+                </div>
+            `).join('');
+            document.querySelectorAll('.run-lib-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const filename = btn.getAttribute('data-filename');
+                    addNotification(`Running Library Pipeline: ${filename}`, "info", "dashboard");
+                    libraryView.classList.add('hidden'); 
+                    dashboardView.classList.remove('hidden');
+                    loadingOverlay.classList.remove('hidden');
+                    placeholderState.classList.add('hidden');
+                    try {
+                        const response = await fetch(`/api/run_dataset/${filename}`, { method: 'POST' });
+                        const data = await response.json();
+                        
+                        if (data.results) {
+                            populateDashboard(data.results);
+                            addNotification(`Success! ${filename} processed. View in History.`, "success", "history");
+                            setTimeout(() => {
+                                loadingOverlay.classList.add('hidden'); 
+                                resultsContainer.classList.remove('hidden'); 
+                                dashboardView.classList.remove('hidden');
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }, 300);
+                        } else {
+                            throw new Error("Invalid results format");
+                        }
+                    } catch (error) { 
+                        console.error("Library run error:", error);
+                        loadingOverlay.classList.add('hidden'); 
+                        placeholderState.classList.remove('hidden');
+                        dashboardView.classList.remove('hidden'); 
+                        addNotification("Error processing library dataset. Check file format.", "danger");
+                    }
+                });
+            });
+            document.querySelectorAll('.get-file-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const filename = btn.getAttribute('data-filename');
+                    const response = await fetch(`/api/download_dataset/${filename}`);
+                    const blob = await response.blob(); const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+                });
+            });
+        } catch (error) {}
+    }
+
+    async function loadHistory() {
+        try {
+            const response = await fetch('/api/history');
+            const data = await response.json();
+            historyList.innerHTML = data.map(record => `
+                <tr id="history-row-${record.id}" onclick="${record.has_details ? `viewHistoryRecord(${record.id})` : ''}" style="cursor: ${record.has_details ? 'pointer' : 'default'};">
+                    <td><span style="color: var(--text-muted); font-size: 0.8rem;">#${record.id}</span></td>
+                    <td>
+                        <div style="font-weight: 600; color: var(--primary);">
+                            <i class="fas fa-file-csv" style="margin-right: 8px; opacity: 0.8;"></i>${record.filename}
+                        </div>
+                        ${record.has_details ? 
+                            '<span style="font-size: 0.65rem; color: var(--success); font-weight: 700; text-transform: uppercase;"><i class="fas fa-magic"></i> Interactive Dashboard Ready</span>' : 
+                            '<span style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;"><i class="fas fa-history"></i> Summary Report (Legacy)</span>'}
+                    </td>
+                    <td><span class="history-accuracy">${(record.accuracy * 100).toFixed(2)}% Accuracy</span></td>
+                    <td><span class="history-anomalies">${record.anomalies} Anomaly Clusters</span></td>
+                    <td><span class="history-timestamp"><i class="far fa-clock" style="margin-right: 5px;"></i>${record.timestamp}</span></td>
+                    <td style="text-align: center;">
+                        <button onclick="deleteHistoryItem(${record.id}, event)" class="btn-secondary" style="padding: 0.4rem 0.8rem; border-color: rgba(244, 63, 94, 0.2); color: var(--danger);">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (error) { historyList.innerHTML = '<tr><td colspan="6">Error loading history.</td></tr>'; }
+    }
+
+    window.viewHistoryRecord = async function(id) {
+        console.log("Viewing history record:", id);
+        loadingOverlay.classList.remove('hidden');
+        try {
+            const response = await fetch(`/api/history/${id}`);
+            const data = await response.json();
+            if (data.success) {
+                populateDashboard(data.results);
+                hideHistory();
+                showToast(`Restored analysis for record #${id}`, "success");
+            } else {
+                showToast("Bhai, ye purana record hai. Ismein detailed data nahi hai. Naye analysis try kijiye!", "warning");
+            }
+        } catch (error) { showToast("Could not load record", "error"); }
+        finally { loadingOverlay.classList.add('hidden'); }
+    };
+
+    window.deleteHistoryItem = function(id, event) {
+        if (event) event.stopPropagation();
+        window.showConfirmModal("Confirm Deletion", `Bhai, kya aap sach mein record #${id} delete karna chahte hain?`, async () => {
+            try {
+                const response = await fetch(`/api/delete_history/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
+                const data = await response.json();
+                if (data.success) { showToast(`Record #${id} deleted!`, "success"); addNotification(`History Deleted: Record #${id} removed.`, "warning", "history"); loadHistory(); }
+            } catch (error) { showToast("Deletion failed", "error"); }
+        });
+    };
+
+    window.clearAllHistory = function() {
+        window.showConfirmModal("Clear All History", "Bhai, kya aap sach mein POORI history delete karna chahte hain? Ye wapis nahi aayegi!", async () => {
+            try {
+                const response = await fetch('/api/clear_all_history', { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
+                const data = await response.json();
+                if (data.success) { showToast("History cleared!", "success"); addNotification("Database Cleared: All records removed.", "danger", "history"); loadHistory(); }
+            } catch (error) { showToast("Action failed", "error"); }
+        });
+    };
+
+    window.currentInsights = null;
+    function populateDashboard(results) {
+        if (!results) return;
+        window.currentInsights = results.insights || {};
+        
+        if (placeholderState) placeholderState.classList.add('hidden');
+        if (resultsContainer) resultsContainer.classList.remove('hidden');
+        
+        // Safety checks for all stats
+        if (results.dataset_stats && document.getElementById('smoteStat')) {
+            document.getElementById('smoteStat').innerHTML = `${results.dataset_stats.size_after_smote || 0} <span>samples (Up from ${results.dataset_stats.original_size || 0})</span>`;
+        }
+        
+        if (results.model_performance) {
+            if (document.getElementById('xgbStat')) document.getElementById('xgbStat').innerText = `${((results.model_performance.xgboost || 0) * 100).toFixed(2)}%`;
+            if (document.getElementById('barXgb')) document.getElementById('barXgb').style.width = `${(results.model_performance.xgboost || 0) * 100}%`;
+            if (document.getElementById('valXgb')) document.getElementById('valXgb').innerText = `${((results.model_performance.xgboost || 0) * 100).toFixed(2)}%`;
+            
+            if (document.getElementById('barRidge')) document.getElementById('barRidge').style.width = `${(results.model_performance.ridge_regression || 0) * 100}%`;
+            if (document.getElementById('valRidge')) document.getElementById('valRidge').innerText = `${((results.model_performance.ridge_regression || 0) * 100).toFixed(2)}%`;
+            
+            if (document.getElementById('barPerceptron')) document.getElementById('barPerceptron').style.width = `${(results.model_performance.perceptron || 0) * 100}%`;
+            if (document.getElementById('valPerceptron')) document.getElementById('valPerceptron').innerText = `${((results.model_performance.perceptron || 0) * 100).toFixed(2)}%`;
+        }
+        
+        if (document.getElementById('dbscanStat')) {
+            document.getElementById('dbscanStat').innerText = `${results.dbscan_anomalies || 0} Anomalies Detected`;
+        }
+        
+        if (results.time_series_data) renderVibrationChart(results.time_series_data); 
+        if (results.tree_features) renderFeatureChart(results.tree_features);
+    }
+
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        const toast = document.createElement('div'); toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}" style="margin-right: 10px;"></i><span>${message}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 5000);
+    }
+
+    let vibChartInstance = null;
+    function renderVibrationChart(timeSeriesData) {
+        const ctx = document.getElementById('vibrationChart').getContext('2d');
+        if (vibChartInstance) vibChartInstance.destroy();
+        vibChartInstance = new Chart(ctx, { type: 'line', data: { labels: timeSeriesData.map(d => d.time), datasets: [{ label: 'Vibration Amplitude (mm/s)', data: timeSeriesData.map(d => d.vibration), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', pointBackgroundColor: timeSeriesData.map(d => d.anomaly ? '#ef4444' : '#3b82f6'), pointRadius: timeSeriesData.map(d => d.anomaly ? 6 : 3), fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } } } } });
+    }
+
+    let featChartInstance = null;
+    function renderFeatureChart(features) {
+        const ctx = document.getElementById('featureChart').getContext('2d');
         if (featChartInstance) featChartInstance.destroy();
         features.sort((a, b) => b.importance - a.importance);
         featChartInstance = new Chart(ctx, { type: 'bar', data: { labels: features.map(f => f.name), datasets: [{ label: 'Feature Importance (%)', data: features.map(f => f.importance * 100), backgroundColor: 'rgba(59, 130, 246, 0.8)', borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }, y: { grid: { display: false }, ticks: { color: '#94a3b8' } } } } });
     }
-});
 
-// --- AI Assistant (TurbineBot) Logic ---
-const chatbotToggle = document.getElementById("chatbotToggle");
-const chatWindow = document.getElementById("chatWindow");
-const closeChat = document.getElementById("closeChat");
-const chatInput = document.getElementById("chatInput");
-const sendChat = document.getElementById("sendChat");
-const chatBody = document.getElementById("chatBody");
+    // --- AI Assistant (TurbineBot) Logic ---
+    const aiFabBtn = document.getElementById("aiFabBtn");
+    const aiChatWindow = document.getElementById("aiChatWindow");
+    const closeChatBtn = document.getElementById("closeChatBtn");
+    const aiChatBody = document.getElementById("aiChatBody");
+    const aiChatInput = document.getElementById("aiChatInput");
+    const sendChatBtn = document.getElementById("sendChatBtn");
 
-if (chatbotToggle) {
-    chatbotToggle.addEventListener("click", () => {
-        chatWindow.classList.toggle("hidden");
-        if (!chatWindow.classList.contains("hidden")) {
-            chatInput.focus();
-        }
-    });
-}
-
-if (closeChat) {
-    closeChat.addEventListener("click", () => {
-        chatWindow.classList.add("hidden");
-    });
-}
-
-const appendMessage = (message, type) => {
-    const msgDiv = document.createElement("div");
-    msgDiv.className = `msg ${type}-msg`;
-    msgDiv.innerHTML = message.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-    chatBody.appendChild(msgDiv);
-    chatBody.scrollTop = chatBody.scrollHeight;
-};
-
-const handleChat = async () => {
-    const message = chatInput.value.trim();
-    if (!message) return;
-
-    appendMessage(message, "user");
-    chatInput.value = "";
-
-    // Show typing indicator
-    const typing = document.createElement("div");
-    typing.className = "typing-indicator";
-    typing.innerText = "TurbineBot is thinking...";
-    chatBody.appendChild(typing);
-    chatBody.scrollTop = chatBody.scrollHeight;
-
-    try {
-        const response = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message })
+    if (aiFabBtn) {
+        aiFabBtn.addEventListener("click", () => {
+            aiChatWindow.classList.toggle("hidden");
+            if (!aiChatWindow.classList.contains("hidden")) {
+                aiChatInput.focus();
+            }
         });
-        const data = await response.json();
-        typing.remove();
-        appendMessage(data.response, "bot");
-    } catch (error) {
-        typing.remove();
-        appendMessage("Bhai, server se connection toot gaya. Ek baar refresh karke dekho!", "bot");
     }
-};
 
-if (sendChat) {
-    sendChat.addEventListener("click", handleChat);
-}
+    if (closeChatBtn) {
+        closeChatBtn.addEventListener("click", () => {
+            aiChatWindow.classList.add("hidden");
+        });
+    }
 
-if (chatInput) {
-    chatInput.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") handleChat();
-    });
-}
+    async function sendAIMessage() {
+        const text = aiChatInput.value.trim();
+        if (!text) return;
 
+        appendAIMessage(text, "user");
+        aiChatInput.value = "";
+
+        const typingId = "typing-" + Date.now();
+        const typingDiv = document.createElement("div");
+        typingDiv.id = typingId;
+        typingDiv.className = "ai-message bot";
+        typingDiv.innerHTML = "<p><i>TurbineBot is thinking...</i></p>";
+        aiChatBody.appendChild(typingDiv);
+        aiChatBody.scrollTop = aiChatBody.scrollHeight;
+
+        try {
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: text })
+            });
+            const data = await response.json();
+            document.getElementById(typingId).remove();
+            appendAIMessage(data.response, "bot");
+        } catch (error) {
+            if (document.getElementById(typingId)) document.getElementById(typingId).remove();
+            appendAIMessage("Bhai, server se connection toot gaya. Ek baar refresh karke dekho!", "bot");
+        }
+    }
+
+    function appendAIMessage(text, side) {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `ai-message ${side}`;
+        msgDiv.innerHTML = `<p>${text}</p>`;
+        aiChatBody.appendChild(msgDiv);
+        aiChatBody.scrollTop = aiChatBody.scrollHeight;
+    }
+
+    if (sendChatBtn) {
+        sendChatBtn.addEventListener("click", sendAIMessage);
+    }
+
+    if (aiChatInput) {
+        aiChatInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendAIMessage();
+        });
+    }
+});

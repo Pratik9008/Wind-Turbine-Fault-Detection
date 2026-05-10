@@ -334,31 +334,28 @@ def upload_file():
         return jsonify({'message': 'File successfully processed', 'results': results})
 
 @app.route('/api/chat', methods=['POST'])
-def chat():
-    user_message = request.json.get('message', '').lower()
+def ai_chat():
+    data = request.json
+    user_msg = data.get('message', '').lower()
     
-    # Simple smart logic for TurbineBot
-    knowledge_base = {
-        'smote': 'SMOTE (Synthetic Minority Over-sampling Technique) balances our data. Since turbine failures are rare, SMOTE creates synthetic "fault" samples so the AI can learn better.',
-        'xgboost': 'XGBoost is our primary classifier. It uses Decision Trees and Gradient Boosting to achieve over 99% accuracy in predicting faults.',
-        'dbscan': 'DBSCAN is an unsupervised clustering algorithm. It helps us find "anomalies" or outliers in sensor data that don\'t follow normal patterns.',
-        'hello': 'Hello! I am TurbineBot. How can I help you with wind turbine monitoring today?',
-        'hi': 'Hi there! Ready to analyze some turbine data?',
-        'help': 'You can upload a CSV file or run our "Instant Demo" to see the AI in action. I can also explain technical terms like SMOTE or XGBoost!',
-        'fault': 'Faults in wind turbines can be detected via high vibration, high gearbox temperature, or drops in power output. Our AI monitors all these simultaneously.',
-        'accuracy': 'Our XGBoost model typically achieves 98-100% accuracy after SMOTE balancing.',
-        'dataset': 'You can find over 50 test datasets in our "Dataset Library" tab.',
-        'author': 'This platform was developed by Pratik Kumar Rajput for advanced predictive maintenance.',
-        'pratik': 'Pratik Kumar Rajput is the developer behind this awesome AI platform!'
-    }
-    
-    response = "I'm not sure about that, bhai. Try asking about SMOTE, XGBoost, or how to use the dashboard!"
-    
-    for key in knowledge_base:
-        if key in user_message:
-            response = knowledge_base[key]
-            break
-            
+    # Project Knowledge Base (Simulated AI Logic)
+    if any(word in user_msg for word in ['hi', 'hello', 'hey']):
+        response = "Hello! I'm TurbineBot. I can help you understand how our AI detects wind turbine faults. What would you like to know?"
+    elif 'smote' in user_msg:
+        response = "SMOTE (Synthetic Minority Over-sampling Technique) is used here to balance our dataset. Since turbine failures are rare, SMOTE creates synthetic examples of failures so our AI can learn to recognize them better."
+    elif 'xgboost' in user_msg:
+        response = "XGBoost is our main predictor. It's a powerful gradient boosting algorithm that analyzes sensor data (like vibration and temperature) to identify specific fault types with high accuracy."
+    elif 'dbscan' in user_msg:
+        response = "DBSCAN is an unsupervised clustering algorithm. We use it to detect unusual patterns or anomalies in the sensor data that don't match known clusters, helping us find new types of failures."
+    elif 'upload' in user_msg or 'how to use' in user_msg:
+        response = "To use the platform, click 'Upload Sensor Data' at the top right to analyze your own CSV file. Or, click 'Run Instant Demo' to see the AI in action with our pre-loaded data!"
+    elif 'accuracy' in user_msg or 'performance' in user_msg:
+        response = "You can see the model performance in the 'Model Comparison' section after running an analysis. XGBoost usually performs best, often achieving over 90% accuracy on balanced data."
+    elif 'who' in user_msg and 'author' in user_msg:
+        response = "This project was developed by Pratik Kumar Rajput, a specialist in AI and Predictive Maintenance."
+    else:
+        response = "That's an interesting question! I'm focused on Wind Turbine Fault Detection. You can ask me about SMOTE, XGBoost, DBSCAN, or how to use this dashboard."
+
     return jsonify({'response': response})
 
 if __name__ == '__main__':
